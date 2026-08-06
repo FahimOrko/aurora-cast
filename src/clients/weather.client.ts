@@ -8,7 +8,6 @@ import {
   type WeatherForecastResponse,
 } from "../schemas/weather.schema.js";
 import { WEATHER } from "../constants/weather.js";
-import { logger } from "../utils/logger.js";
 
 // ---------------------------------------------------------
 // GET weather forecast for a given latitude and longitude
@@ -23,6 +22,7 @@ async function getForecast(
       latitude,
       longitude,
       hourly: WEATHER.hourly,
+      daily: WEATHER.daily,
       models: WEATHER.model,
       forecast_days: WEATHER.forecastDays,
     };
@@ -39,9 +39,12 @@ async function getForecast(
     }
 
     if (err instanceof ZodError) {
-      throw new AppError("Invalid weather API response", 502);
-    }
+      const message = err.issues
+        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+        .join(", ");
 
+      throw new AppError(`Invalid weather API response: ${message}`, 502);
+    }
     throw err;
   }
 }

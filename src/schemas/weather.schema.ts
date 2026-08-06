@@ -20,6 +20,16 @@ export const weatherForecastSchema = z.object({
     visibility: z.array(z.number()),
     precipitation: z.array(z.number()),
   }),
+  daily_units: z.object({
+    time: z.string(),
+    sunrise: z.string(),
+    sunset: z.string(),
+  }),
+  daily: z.object({
+    time: z.array(z.string()),
+    sunrise: z.array(z.string()),
+    sunset: z.array(z.string()),
+  }),
 });
 
 export type WeatherForecastResponse = z.infer<typeof weatherForecastSchema>;
