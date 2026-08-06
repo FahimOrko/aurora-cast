@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
 import { z } from "zod";
-import { logger } from "../utils/logger.js";
 
 dotenv.config();
 
@@ -8,6 +7,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(8080),
   ENVIRONMENT: z.enum(["dev", "prod", "test"]).default("dev"),
   CORS_ORIGIN: z.string().transform((val) => val.split(",")),
+  WEATHER_API_BASE_URL: z.url(),
+  AURORA_API_BASE_URL: z.url(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -21,4 +22,6 @@ export const config = {
   port: parsed.data.PORT,
   env: parsed.data.ENVIRONMENT,
   corsOrigin: parsed.data.CORS_ORIGIN,
+  weatherApiBaseUrl: parsed.data.WEATHER_API_BASE_URL,
+  auroraApiBaseUrl: parsed.data.AURORA_API_BASE_URL,
 };

@@ -9,14 +9,21 @@ import {
 } from "./utils/responseFormatter.js";
 import { errorHandler } from "./middleware/errorHandler.middleware.js";
 import { httpLogger } from "./middleware/logger.middleware.js";
+import apiRoutes from "./routes/api.routes.js";
 
 const app = express();
 
+// --------------------
 // Middlewares
+// --------------------
 // Security Middlewares
 // --------------------
 app.use(helmet());
 app.use(hpp());
+// --------------------
+// Logger Middleware
+// --------------------
+app.use(httpLogger);
 // --------------------
 app.use(express.json({ limit: "10kb" }));
 app.use(
@@ -26,10 +33,10 @@ app.use(
     credentials: true,
   }),
 );
-// Logger Middleware
 // --------------------
-app.use(httpLogger);
-// --------------------
+
+//
+app.use("/api/v1", apiRoutes);
 
 // health check
 app.get("/", (_req, res) => {
@@ -46,7 +53,7 @@ app.use((_req, res) => {
   res.status(404).json(formatResponseError("Route not found", 404));
 });
 
-// Error middleware
+// Error Middleware
 app.use(errorHandler);
 
 export default app;

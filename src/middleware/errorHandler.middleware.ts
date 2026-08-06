@@ -6,6 +6,7 @@ import { logger } from "../utils/logger.js";
 
 export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (err instanceof AppError) {
+    logger.warn(err);
     res.status(err.code).json(formatResponseError(err.message, err.code));
     return;
   }
