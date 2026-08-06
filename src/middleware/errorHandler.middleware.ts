@@ -1,7 +1,8 @@
 import { ErrorRequestHandler } from "express";
-import { AppError } from "../utils/appError.js";
+import { AppError } from "../utils/AppError.js";
 import { formatResponseError } from "../utils/responseFormatter.js";
 import { config } from "../config/index.js";
+import { logger } from "../utils/logger.js";
 
 export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (err instanceof AppError) {
@@ -9,7 +10,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     return;
   }
 
-  console.error(err);
+  logger.error(err);
 
   const message =
     config.env === "prod" ? "Something went wrong" : (err as Error).message;

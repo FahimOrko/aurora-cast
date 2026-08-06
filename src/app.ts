@@ -7,13 +7,17 @@ import {
   formatResponseError,
   formatResponseSuccess,
 } from "./utils/responseFormatter.js";
-import { errorHandler } from "./middleware/errorHandler.js";
+import { errorHandler } from "./middleware/errorHandler.middleware.js";
+import { httpLogger } from "./middleware/logger.middleware.js";
 
 const app = express();
 
 // Middlewares
+// Security Middlewares
+// --------------------
 app.use(helmet());
 app.use(hpp());
+// --------------------
 app.use(express.json({ limit: "10kb" }));
 app.use(
   cors({
@@ -22,11 +26,15 @@ app.use(
     credentials: true,
   }),
 );
+// Logger Middleware
+// --------------------
+app.use(httpLogger);
+// --------------------
 
 // health check
 app.get("/", (_req, res) => {
   const health = {
-    root: { status: "UP", message: "Root External API Running Successfully" },
+    root: { status: "UP", message: "Root API Running Successfully" },
   };
   res
     .status(200)
