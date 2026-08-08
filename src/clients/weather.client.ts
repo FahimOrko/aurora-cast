@@ -8,6 +8,8 @@ import {
   type WeatherForecastResponse,
 } from "../schemas/weather.schema.js";
 import { WEATHER } from "../constants/weather.js";
+import { memoryCache } from "../cache/memoryCache.js";
+import { CACHE_TTL } from "../constants/cache.js";
 
 // ---------------------------------------------------------
 // GET weather forecast for a given latitude and longitude
@@ -16,34 +18,38 @@ async function getWeatherForecast(
   latitude: number,
   longitude: number,
 ): Promise<WeatherForecastResponse> {
-  try {
-    const forecastUrl = `${config.weatherApiBaseUrl}/forecast`;
-    const params = {
-      latitude,
-      longitude,
-      ...WEATHER
-    };
+  const key = `weather:${latitude}:${longitude}`;
 
-    const res = await httpClient.get<WeatherForecastResponse>(forecastUrl, {
-      params,
-    });
+  return memoryCache.wrap(key, CACHE_TTL.WEATHER_FORECAST_SEC, async () => {
+    try {
+      const forecastUrl = `${config.weatherApiBaseUrl}/forecast`;
+      const params = {
+        latitude,
+        longitude,
+        ...WEATHER,
+      };
 
-    const data = weatherForecastSchema.parse(res.data);
-    return data;
-  } catch (err) {
-    if (err instanceof AxiosError) {
-      throw new AppError("Failed to fetch weather data", 503);
+      const res = await httpClient.get<WeatherForecastResponse>(forecastUrl, {
+        params,
+      });
+
+      const data = weatherForecastSchema.parse(res.data);
+      return data;
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        throw new AppError("Failed to fetch weather data", 503);
+      }
+
+      if (err instanceof ZodError) {
+        const message = err.issues
+          .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+          .join(", ");
+
+        throw new AppError(`Invalid weather API response: ${message}`, 502);
+      }
+      throw err;
     }
-
-    if (err instanceof ZodError) {
-      const message = err.issues
-        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
-        .join(", ");
-
-      throw new AppError(`Invalid weather API response: ${message}`, 502);
-    }
-    throw err;
-  }
+  });
 }
 // ---------------------------------------------------------
 
