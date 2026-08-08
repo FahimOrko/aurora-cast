@@ -12,7 +12,7 @@ import { WEATHER } from "../constants/weather.js";
 // ---------------------------------------------------------
 // GET weather forecast for a given latitude and longitude
 // ---------------------------------------------------------
-async function getForecast(
+async function getWeatherForecast(
   latitude: number,
   longitude: number,
 ): Promise<WeatherForecastResponse> {
@@ -21,10 +21,7 @@ async function getForecast(
     const params = {
       latitude,
       longitude,
-      hourly: WEATHER.hourly,
-      daily: WEATHER.daily,
-      models: WEATHER.model,
-      forecast_days: WEATHER.forecastDays,
+      ...WEATHER
     };
 
     const res = await httpClient.get<WeatherForecastResponse>(forecastUrl, {
@@ -51,5 +48,5 @@ async function getForecast(
 // ---------------------------------------------------------
 
 export const weatherClient = {
-  getForecast,
+  getWeatherForecast,
 };

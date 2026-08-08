@@ -1,168 +1,160 @@
-import { FORECAST } from "../constants/forecast.js";
 import { AppError } from "../utils/AppError.js";
-import { weatherClient } from "../clients/weather.client.js";
-import { WeatherForecastResponse } from "../schemas/weather.schema.js";
+import { weatherService, type HourlyForecast } from "./weather.service.js";
+import { auroraService, type AuroraPeriod } from "./aurora.service.js";
+import { KP_VISIBILITY_TABLE } from "../constants/forecast.js";
 
-type HourlyForecast = {
+export type AuroraConditions = "Poor" | "Possible" | "Good" | "Excellent";
+
+export type ForecastWindow = {
   time: string;
   cloudCover: number;
-  visibility: number;
-  precipitation: number;
+  kp: number;
+  score: number;
+  conditions: AuroraConditions;
 };
 
-type WeatherSummary = {
-  averageCloudCover: number;
-  averageVisibility: number;
-  totalPrecipitation: number;
+export type DayForecast = {
+  date: string;
+  bestViewingWindow: ForecastWindow;
+  hourly: ForecastWindow[];
 };
 
-type BestViewingWindow = {
-  start: string;
-  end: string;
-  cloudCover: number;
-  visibility: number;
-};
-
-function getDayForecast(
-  weather: WeatherForecastResponse,
-  date: string,
-): HourlyForecast[] {
-  return weather.hourly.time
-    .map((time, index) => ({
-      time,
-      cloudCover: weather.hourly.cloud_cover[index],
-      visibility: weather.hourly.visibility[index],
-      precipitation: weather.hourly.precipitation[index],
-    }))
-    .filter((hour) => hour.time.startsWith(date));
-}
-
-function getNightForecast(
-  weather: WeatherForecastResponse,
-  dayForecast: HourlyForecast[],
-  date: string,
-): HourlyForecast[] {
-  const dayIndex = weather.daily.time.findIndex((day) => day === date);
-
-  if (dayIndex === -1) {
-    throw new AppError("No daily weather data available.", 404);
-  }
-
-  const sunrise = weather.daily.sunrise[dayIndex];
-  const sunset = weather.daily.sunset[dayIndex];
-
-  return dayForecast.filter(
-    (hour) => hour.time < sunrise || hour.time > sunset,
-  );
-}
-
-function calculateWeatherSummary(
-  nightForecast: HourlyForecast[],
-): WeatherSummary {
-  const averageCloudCover =
-    nightForecast.reduce((sum, hour) => sum + hour.cloudCover, 0) /
-    nightForecast.length;
-
-  const averageVisibility =
-    nightForecast.reduce((sum, hour) => sum + hour.visibility, 0) /
-    nightForecast.length;
-
-  const totalPrecipitation = nightForecast.reduce(
-    (sum, hour) => sum + hour.precipitation,
-    0,
-  );
-
-  return {
-    averageCloudCover: Math.round(averageCloudCover),
-    averageVisibility: Math.round(averageVisibility),
-    totalPrecipitation: Math.round(totalPrecipitation * 100) / 100,
-  };
-}
-
-function determineViewingConditions(summary: WeatherSummary) {
-  let score = FORECAST.MAX_SCORE;
-
-  // Cloud cover has the biggest impact
-  score -= summary.averageCloudCover * FORECAST.CLOUD_COVER_WEIGHT;
-
-  // Rain or snow is bad for viewing
-  if (summary.totalPrecipitation > 0) {
-    score -= FORECAST.PRECIPITATION_PENALTY;
-  }
-
-  // Poor visibility
-  if (summary.averageVisibility < 10000) {
-    score -= FORECAST.LOW_VISIBILITY_PENALTY;
-  }
-
-  score = Math.max(0, Math.min(FORECAST.MAX_SCORE, Math.round(score)));
-
-  let conditions = "Poor";
-
-  if (score >= FORECAST.EXCELLENT_SCORE) {
-    conditions = "Excellent";
-  } else if (score >= FORECAST.GOOD_SCORE) {
-    conditions = "Good";
-  } else if (score >= FORECAST.FAIR_SCORE) {
-    conditions = "Fair";
-  }
-
-  return {
-    score,
-    conditions,
-  };
-}
-
-function getBestViewingWindow(
-  nightForecast: HourlyForecast[],
-): BestViewingWindow {
-  const sorted = [...nightForecast].sort((a, b) => {
-    if (a.cloudCover !== b.cloudCover) {
-      return a.cloudCover - b.cloudCover;
+export type ForecastResult =
+  | {
+      date: string;
+      predictable: true;
+      bestViewingWindow: ForecastWindow;
+      hourly: ForecastWindow[];
     }
+  | {
+      date: string;
+      predictable: false;
+      message: string;
+    };
 
-    return b.visibility - a.visibility;
-  });
-
-  const best = sorted[0];
-
-  const index = nightForecast.findIndex((hour) => hour.time === best.time);
-
-  return {
-    start: best.time,
-    end: nightForecast[index + 1]?.time ?? best.time,
-    cloudCover: best.cloudCover,
-    visibility: best.visibility,
-  };
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
-async function getForecast(date: string, latitude: number, longitude: number) {
-  const weather = await weatherClient.getForecast(latitude, longitude);
+function getRequiredKp(latitude: number): number {
+  if (latitude >= KP_VISIBILITY_TABLE[0].latitude) return 0;
+  if (latitude <= KP_VISIBILITY_TABLE[9].latitude) return 9;
 
-  const dayForecast = getDayForecast(weather, date);
+  for (let i = 0; i < KP_VISIBILITY_TABLE.length - 1; i++) {
+    const upper = KP_VISIBILITY_TABLE[i];
+    const lower = KP_VISIBILITY_TABLE[i + 1];
 
-  if (dayForecast.length === 0) {
-    throw new AppError("No forecast available for the requested date.", 404);
+    if (latitude <= upper.latitude && latitude >= lower.latitude) {
+      const fraction =
+        (upper.latitude - latitude) / (upper.latitude - lower.latitude);
+      return upper.kp + fraction * (lower.kp - upper.kp);
+    }
   }
 
-  const nightForecast = getNightForecast(weather, dayForecast, date);
+  return 9;
+}
 
-  if (nightForecast.length === 0) {
+function findAuroraPeriod(periods: AuroraPeriod[], time: string): AuroraPeriod {
+  return (
+    periods.find((p) => time >= p.start && time < p.end) ??
+    periods[periods.length - 1]
+  );
+}
+
+function calculateAuroraScore(
+  kp: number,
+  latitude: number,
+  cloudCover: number,
+): number {
+  const requiredKp = getRequiredKp(latitude);
+
+  // kp exactly at threshold -> 50 (coin-flip). +2 above -> 100. -2 below -> 0.
+  const activityScore = clamp(((kp - requiredKp + 2) / 4) * 100, 0, 100);
+
+  // Cloud cover is a gate, not an additive factor — no clear sky, no visibility.
+  const clearSkyFraction = (100 - cloudCover) / 100;
+
+  return Math.round(clamp(activityScore * clearSkyFraction, 0, 100));
+}
+
+function getAuroraConditions(score: number): AuroraConditions {
+  if (score >= 75) return "Excellent";
+  if (score >= 50) return "Good";
+  if (score >= 25) return "Possible";
+  return "Poor";
+}
+
+function scoreNightHours(
+  nightHours: HourlyForecast[],
+  auroraPeriods: AuroraPeriod[],
+  latitude: number,
+): ForecastWindow[] {
+  return nightHours.map((hour) => {
+    const period = findAuroraPeriod(auroraPeriods, hour.time);
+    const score = calculateAuroraScore(period.kp, latitude, hour.cloudCover);
+
+    return {
+      time: hour.time,
+      cloudCover: hour.cloudCover,
+      kp: period.kp,
+      score,
+      conditions: getAuroraConditions(score),
+    };
+  });
+}
+
+async function getForecast(
+  date: string,
+  latitude: number,
+  longitude: number,
+): Promise<ForecastResult> {
+  const auroraForecast = await auroraService.getAuroraForecast();
+  const dates = auroraService.getForecastDates(auroraForecast);
+
+  const maxDate = dates[dates.length - 1];
+
+  if (date > maxDate) {
     throw new AppError(
-      "No nighttime forecast available for the requested date.",
+      `Aurora activity can't be predicted that far ahead. Forecasts are only available up to ${maxDate}.`,
+      400,
+    );
+  }
+
+  if (!dates.includes(date)) {
+    throw new AppError(
+      "No forecast data available for the requested date.",
       404,
     );
   }
 
-  const summary = calculateWeatherSummary(nightForecast);
-  const bestViewingWindow = getBestViewingWindow(nightForecast);
-  const viewingConditions = determineViewingConditions(summary);
+  const nightHoursByDate = await weatherService.getNightHoursForDates(
+    [date],
+    latitude,
+    longitude,
+  );
 
-  return {
-    summary,
-    bestViewingWindow,
-    viewingConditions,
-  };
+  const nightHours = nightHoursByDate.get(date);
+  if (!nightHours) {
+    throw new AppError(
+      "No nighttime weather data available for the requested date.",
+      404,
+    );
+  }
+
+  const auroraForDate = auroraForecast.filter((p) => p.date === date);
+  if (auroraForDate.length === 0) {
+    throw new AppError(
+      "No aurora forecast available for the requested date.",
+      404,
+    );
+  }
+
+  const hourly = scoreNightHours(nightHours, auroraForDate, latitude);
+  const bestViewingWindow = hourly.reduce((best, current) =>
+    current.score > best.score ? current : best,
+  );
+
+  return { date, predictable: true, bestViewingWindow, hourly };
 }
 
 export const forecastService = {
