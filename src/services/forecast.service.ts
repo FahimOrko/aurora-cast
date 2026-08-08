@@ -19,18 +19,14 @@ export type DayForecast = {
   hourly: ForecastWindow[];
 };
 
-export type ForecastResult =
-  | {
-      date: string;
-      predictable: true;
-      bestViewingWindow: ForecastWindow;
-      hourly: ForecastWindow[];
-    }
-  | {
-      date: string;
-      predictable: false;
-      message: string;
-    };
+export type ForecastResult = {
+  date: string;
+  latitude: number;
+  longitude: number;
+  predictable: true;
+  bestViewingWindow: ForecastWindow;
+  hourly: ForecastWindow[];
+};
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -154,7 +150,14 @@ async function getForecast(
     current.score > best.score ? current : best,
   );
 
-  return { date, predictable: true, bestViewingWindow, hourly };
+  return {
+    date,
+    latitude,
+    longitude,
+    predictable: true,
+    bestViewingWindow,
+    hourly,
+  };
 }
 
 export const forecastService = {

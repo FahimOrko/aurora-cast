@@ -7,7 +7,6 @@ import {
   type AuroraForecastResponse,
   auroraForecastSchema,
 } from "../schemas/aurora.schema.js";
-import { logger } from "../utils/logger.js";
 
 // ---------------------------------------------------------
 // GET latest aurora forecast
