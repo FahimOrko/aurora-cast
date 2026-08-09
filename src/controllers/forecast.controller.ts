@@ -9,9 +9,7 @@ export async function getForecast(
   next: NextFunction,
 ) {
   try {
-    const { date, latitude, longitude } = forecastRequestSchema.parse(
-      req.query,
-    );
+    const { date, latitude, longitude } = forecastRequestSchema.parse(req.body);
 
     const forecast = await forecastService.getForecast(
       date,

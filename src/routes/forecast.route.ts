@@ -5,10 +5,10 @@ import { forecastRequestSchema } from "../schemas/forecast.schema.js";
 
 const forecastRouter = Router();
 
-// GET /api/v1/aurora/forecast
-forecastRouter.get(
+// POST /api/v1/aurora/forecast
+forecastRouter.post(
   "/forecast",
-  validate(forecastRequestSchema, "query"),
+  validate(forecastRequestSchema, "body"),
   getForecast,
 );
 
