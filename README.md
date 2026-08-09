@@ -1,267 +1,197 @@
 # Aurora Cast
 
-A modern TypeScript project for <SHORT DESCRIPTION — e.g., realtime streaming, casting media, a CLI tool, a web service, etc.>. Aurora Cast provides <PRIMARY VALUE PROPOSITION — e.g., low-latency streaming, easy integration, a developer-friendly API>.
+Aurora Cast — TypeScript API for fetching aurora and weather forecasts and locating the closest city to given coordinates.
 
-[![CI](https://img.shields.io/badge/ci-passing-brightgreen)](https://github.com/FahimOrko/aurora-cast/actions)
-[![Coverage](https://img.shields.io/badge/coverage---%25-lightgrey)](#coverage)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+Badges
+- Language: TypeScript
+- Runtime: Node.js (ESM)
 
 Table of contents
-- [About](#about)
-- [Features](#features)
+- [What it is](#what-it-is)
+- [One-liner](#one-liner)
 - [Tech stack](#tech-stack)
-- [Getting started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Install](#install)
-  - [Environment](#environment)
-  - [Run (development)](#run-development)
-  - [Build & Run (production)](#build--run-production)
-  - [Docker](#docker)
-- [Usage examples](#usage-examples)
+- [Requirements](#requirements)
+- [Environment](#environment)
+- [Install & run](#install--run)
+- [Available scripts](#available-scripts)
+- [API](#api)
+  - [Health check](#health-check)
+  - [GET /api/v1/aurora/forecast](#get-apiv1auroraforecast)
+  - [POST /api/v1/cities/closest](#post-apiv1citiesclosest)
 - [Project structure](#project-structure)
+- [Configuration details](#configuration-details)
+- [Notes & implementation details](#notes--implementation-details)
 - [Testing](#testing)
-- [Linting & formatting](#linting--formatting)
-- [Type checking](#type-checking)
-- [Deployment](#deployment)
-- [CI / CD](#ci--cd)
-- [Contributing](#contributing)
-- [Roadmap](#roadmap)
-- [Troubleshooting](#troubleshooting)
 - [License](#license)
-- [Credits & authors](#credits--authors)
-- [Contact](#contact)
+- [Maintainer](#maintainer)
 
-## About
-Aurora Cast is designed to <EXPLAIN GOAL IN ONE OR TWO SENTENCES>. It targets <AUDIENCE — e.g., developers building streaming apps, backend services, CLI users> and aims to provide <KEY BENEFITS — e.g., easy integration, extensible plugin system, strong typing>.
+## What it is
+A small Express-based TypeScript service that exposes endpoints to fetch aurora/weather forecast data (by proxying configured external APIs) and a utility to find the closest city to given coordinates.
 
-## Features
-- TypeScript-first codebase with strict typing
-- <Feature 1 — e.g., WebSocket-based streaming or REST API>
-- <Feature 2 — e.g., pluggable adapters, codecs, or storage backends>
-- CLI for quick local usage (if applicable)
-- Tests, linting, and CI setup
+## One-liner
+Aurora Cast — TypeScript API for fetching aurora and weather forecasts and locating the closest city to given coordinates.
 
 ## Tech stack
-- Language: TypeScript (ES202x / Node LTS)
-- Runtime: Node.js (>=16 or specify exact)
-- Notable libraries (example):
-  - Express / Fastify / Oak (if HTTP server)
-  - ws or socket.io (if realtime)
-  - TypeORM / Prisma / plain SQL (if persistence)
-  - Jest / Vitest for tests
-  - ESLint + Prettier + TypeScript
+- Language: TypeScript (ES Module)
+- HTTP framework: express v5
+- Validation: zod
+- HTTP client: axios
+- Logging: pino + pino-http
+- Utilities: fuse.js (fuzzy search), node-cache
+- Security middlewares: helmet, hpp, cors
+- Migrations / DB tooling referenced: drizzle-kit
+- Dev tools: nodemon, ts-node, typescript
 
-Replace the above with the repository's actual stack if different.
+## Requirements
+- Node.js (>=16 recommended)
+- npm / yarn / pnpm
+- (Optional) Docker for containerized runs
 
-## Getting started
+## Environment
+The app validates required environment variables at startup using zod. The following environment variables are expected:
+- PORT (number, defaults to 8080)
+- ENVIRONMENT (one of: dev, prod, test — defaults to dev)
+- CORS_ORIGIN (comma-separated origins)
+- WEATHER_API_BASE_URL (full URL to weather API)
+- AURORA_API_BASE_URL (full URL to aurora API)
 
-### Prerequisites
-- Node.js >= 16 (or the project's required Node version)
-- npm, yarn, or pnpm (pnpm recommended for monorepos)
-- Optional: Docker (for containerized runs)
+Example .env
+```env
+PORT=8080
+ENVIRONMENT=dev
+CORS_ORIGIN=http://localhost:3000
+WEATHER_API_BASE_URL=https://api.weather.example
+AURORA_API_BASE_URL=https://api.aurora.example
+```
 
-### Install
-Clone the repo:
+Important: if environment variables are missing or invalid, the app will log the zod error tree and exit.
+
+## Install & run
+Clone and install:
 ```bash
 git clone https://github.com/FahimOrko/aurora-cast.git
 cd aurora-cast
-```
-
-Install dependencies (choose one):
-```bash
-# npm
 npm install
-
-# yarn
-yarn install
-
-# pnpm
-pnpm install
 ```
 
-### Environment
-Create a `.env` file in the project root (example):
-```env
-# Example environment variables — update these to match project needs
-NODE_ENV=development
-PORT=3000
-DATABASE_URL=postgres://user:pass@localhost:5432/aurora
-JWT_SECRET=replace-with-secure-secret
-LOG_LEVEL=info
-```
-If the project includes an `.env.example`, copy it:
+Development (watch + build + run via nodemon):
 ```bash
-cp .env.example .env
-```
-
-### Run (development)
-Run the dev server with automatic reload (example scripts — adjust to match package.json):
-```bash
-# npm
 npm run dev
-
-# yarn
-yarn dev
-
-# pnpm
-pnpm dev
+# nodemon watches src, runs "npm run build && npm start"
 ```
-Open http://localhost:3000 (or the PORT set in env). If the app is a CLI, run:
+
+Build and start (production):
 ```bash
-npm run cli -- <args>
+npm run build      # runs `npx tsc`
+npm start          # runs `node dist/server.js`
 ```
 
-### Build & Run (production)
-```bash
-npm run build
-npm run start
-```
-Or using node directly:
-```bash
-NODE_ENV=production node ./dist/index.js
-```
-
-### Docker
-Build and run with Docker (example):
+Docker (example):
 ```bash
 docker build -t aurora-cast:latest .
-docker run -p 3000:3000 --env-file .env aurora-cast:latest
+docker run -p 8080:8080 --env-file .env aurora-cast:latest
 ```
-(If a docker-compose.yml exists, use `docker compose up`.)
 
-## Usage examples
-Add usage snippets appropriate to the project type.
+## Available scripts (package.json)
+- build: `npx tsc` (compile TypeScript)
+- start: `node dist/server.js`
+- dev: `nodemon --watch src --ext ts --exec "npm run build && npm start"`
+- generate: `drizzle-kit generate` (migration codegen)
+- migrate: `drizzle-kit migrate`
+- geocode: `tsx scripts/geocode-cities.ts`
 
-Example: REST API request (curl)
+## API
+
+### Health check
+GET /
+- 200 — JSON success wrapper with a small health object.
+
+Example:
 ```bash
-curl -X POST http://localhost:3000/api/v1/cast \
+curl http://localhost:8080/
+```
+
+### GET /api/v1/aurora/forecast
+- Query parameters (validated with zod):
+  - date (string)
+  - latitude (number)
+  - longitude (number)
+- Description: Returns forecast data assembled by the forecast service which queries the configured external weather and aurora APIs.
+
+Example:
+```bash
+curl "http://localhost:8080/api/v1/aurora/forecast?date=2026-01-01&latitude=60.17&longitude=24.94"
+```
+
+Successful response: 200 with standardized success wrapper (see utils/responseFormatter.ts).
+
+### POST /api/v1/cities/closest
+- Body (validated with zod):
+  - latitude (number)
+  - longitude (number)
+  - limit? (optional number)
+- Description: Finds the closest city to the provided coordinates. The implementation uses a city dataset and utilities (fuse.js, node-cache) for matching & caching.
+
+Example:
+```bash
+curl -X POST http://localhost:8080/api/v1/cities/closest \
   -H "Content-Type: application/json" \
-  -d '{ "title": "Aurora Demo", "source": "https://example.com/stream" }'
+  -d '{"latitude":60.17,"longitude":24.94}'
 ```
 
-Example: WebSocket client usage
-```js
-import WebSocket from 'ws';
-const ws = new WebSocket('ws://localhost:3000/stream');
-
-ws.on('open', () => ws.send(JSON.stringify({ action: 'subscribe', channel: 'aurora' })));
-ws.on('message', (data) => console.log('event', data.toString()));
-```
-
-Example: CLI
-```bash
-npx aurora-cast create --title "Test"
-```
-
-## Project structure
-This is a recommended structure; adjust to match the repository:
-
+## Project structure (relevant files)
 ```
 src/
-  server/        # HTTP & realtime server entrypoints
-  cli/           # CLI commands
-  lib/           # Core business logic
-  adapters/      # DB / storage / transport adapters
-  routes/        # HTTP route handlers
-  services/      # Domain services and use-cases
-  models/        # Types and persistence models
-  utils/         # Utility helpers
-tests/           # Unit & integration tests
-scripts/         # Dev scripts (local tools, migrations)
-dist/            # Compiled output (gitignored)
-.env.example     # Example environment variables
+  server.ts                 # HTTP server bootstrap (creates http.Server from app)
+  app.ts                    # express app: middleware, routes, health check
+  config/index.ts           # zod-based env parsing and config export
+  routes/
+    api.routes.ts           # mounts /aurora and /cities
+    forecast.route.ts       # GET /forecast
+    city.route.ts           # POST /closest
+  controllers/
+    forecast.controller.ts  # request handling and use of forecastService
+    city.controller.ts      # handles closest-city requests
+  services/
+    forecast.service.ts     # orchestrates external API calls and business logic
+  middleware/
+    validate.middleware.ts  # zod-based request validation
+    errorHandler.middleware.ts
+    logger.middleware.ts
+  utils/
+    responseFormatter.ts    # formatResponseSuccess / formatResponseError
+    logger.ts               # pino logger instance
+scripts/
+  geocode-cities.ts         # helper to geocode / prepare city dataset
 package.json
 tsconfig.json
-jest.config.js or vitest.config.ts
-Dockerfile
 ```
 
-**How it fits together:** The CLI and server boot from src/index.ts (or src/server/index.ts), which wire up adapters (DB, cache), register routes and real-time channels, and start listeners. Services encapsulate domain logic and are used by route handlers and workers.
+## Configuration details
+- CORS_ORIGIN in env is split on commas and used for CORS configuration.
+- The app uses pino for structured logging and pino-http for request logging.
+- All route handlers use a consistent response shape via formatResponseSuccess/formatResponseError.
+
+## Notes & implementation details
+- The app uses zod to validate both environment variables and incoming requests; invalid inputs are thrown and handled by the error middleware.
+- Security middleware enabled: helmet, hpp, cors.
+- No test runner is defined in package.json — add Jest or Vitest and CI test steps for production readiness.
+- The presence of drizzle-kit scripts suggests a DB/migration workflow; set DATABASE_URL and migrate when you add DB-backed features.
 
 ## Testing
-Run unit and integration tests:
-```bash
-# npm
-npm test
-
-# run with coverage
-npm run test:coverage
-```
-Example test scripts in package.json:
-- "test" — runs tests
-- "test:watch" — watch mode
-- "test:coverage" — produces coverage report
-
-## Linting & formatting
-Lint:
-```bash
-npm run lint
-```
-Format:
-```bash
-npm run format
-```
-Suggested tools: ESLint, Prettier. Configure pre-commit hooks using Husky and lint-staged.
-
-## Type checking
-Run the TypeScript compiler in typecheck-only mode:
-```bash
-npm run typecheck
-# example: tsc --noEmit
-```
-
-## Deployment
-General deployment notes:
-- Build artifacts with `npm run build`.
-- Ensure environment variables are set in the target environment.
-- Use a process manager (PM2, systemd) or container orchestration (Docker, Kubernetes) in production.
-
-Example with Docker:
-1. Build: `docker build -t aurora-cast:latest .`
-2. Push to container registry
-3. Deploy to your cloud provider or run with docker-compose/k8s manifests
-
-## CI / CD
-A GitHub Actions workflow (e.g., .github/workflows/ci.yml) should:
-- Install dependencies
-- Run lint and typecheck
-- Run tests and upload coverage
-- Build the project (optionally cache node_modules)
-
-## Contributing
-Contributions are welcome. Please:
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/my-feature`
-3. Write tests for new behavior
-4. Run lint and tests
-5. Submit a pull request describing your changes
-
-Please read CONTRIBUTING.md (if present) for more details.
-
-## Roadmap
-Planned items:
-- [ ] Feature A (e.g., plugin system)
-- [ ] Feature B (e.g., distributed worker support)
-- [ ] Improve docs & examples
-
-## Troubleshooting
-Common issues:
-- "Cannot connect to DB": verify DATABASE_URL and that the DB is reachable.
-- "Type errors on build": run `npm run typecheck` and fix reported issues.
-
-If you hit an issue not covered here, open an issue with a reproducible example and logs.
-
-## Coverage
-Add coverage badges and details here when available. Example:
-- Coverage reports are generated to `coverage/` and published on CI.
+There are no test scripts configured in package.json. Recommended next steps:
+- Add unit tests (Jest or Vitest)
+- Add integration tests for the forecast and city endpoints
+- Add a test script and CI step to run tests on push/PR
 
 ## License
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project uses the license declared in package.json: ISC. Add a LICENSE file if one is not present.
 
-## Credits & authors
-- Maintainer: FahimOrko
-- Contributors: <NAMES>
-- Acknowledgements: <THIRD-PARTY PROJECTS, LIBRARIES>
+## Maintainer
+FahimOrko
 
-## Contact
-For questions or support, open an issue or contact <EMAIL OR HANDLE>.
+---
+
+If you want, I can now:
+- Commit this README.md update to the repository (I will replace the current README with the content above), or
+- Make additional changes (shorten, add examples, or adjust wording).
