@@ -27,16 +27,16 @@ Table of contents
 
 A small Express-based TypeScript service that exposes endpoints to fetch aurora/weather forecast data (by proxying and combining configured external APIs) and a utility to resolve a spoken or typed city name to its closest known match, along with coordinates.
 
-The service produces a single combined score per hour — factoring geomagnetic activity (kp index, adjusted for the requested location's latitude) and cloud cover — instead of exposing raw kp and weather values separately, so any consumer (voice agent, app, dashboard) can give a straightforward "chance of seeing the aurora" answer without doing that math itself.
+The service produces a single combined score per hour - factoring geomagnetic activity (kp index, adjusted for the requested location's latitude) and cloud cover - instead of exposing raw kp and weather values separately, so any consumer (voice agent, app, dashboard) can give a straightforward "chance of seeing the aurora" answer without doing that math itself.
 
 ## How it's used
 
-This API is currently consumed by a **Vapi AI voice agent** (the "Aurora" assistant) as its backend. The voice agent handles the full phone-call flow — greeting the caller, collecting a spoken location and date, confirming both — and calls this API through two tools:
+This API is currently consumed by a **Vapi AI voice agent** (the "Aurora" assistant) as its backend. The voice agent handles the full phone-call flow - greeting the caller, collecting a spoken location and date, confirming both - and calls this API through two tools:
 
-- `find_closest_city_api` → `POST /api/v1/cities/closest` — resolves whatever place name the caller says into a known city name and coordinates.
-- `get_aurora_forecast` → `POST /api/v1/aurora/forecast` — once a location and date are confirmed, retrieves the forecast and the voice agent translates the result (best viewing window and plain-language conditions) into natural spoken language, without ever reading raw scores or JSON to the caller.
+- `find_closest_city_api` → `POST /api/v1/cities/closest` - resolves whatever place name the caller says into a known city name and coordinates.
+- `get_aurora_forecast` → `POST /api/v1/aurora/forecast` - once a location and date are confirmed, retrieves the forecast and the voice agent translates the result (best viewing window and plain-language conditions) into natural spoken language, without ever reading raw scores or JSON to the caller.
 
-This means the API's job is strictly data and scoring — all conversational logic, prompting, and speech lives in the Vapi assistant configuration, not in this codebase.
+This means the API's job is strictly data and scoring - all conversational logic, prompting, and speech lives in the Vapi assistant configuration, not in this codebase.
 
 _(Demo video link: TBD)_
 
@@ -180,7 +180,7 @@ Example success response (`200`):
 }
 ```
 
-Example error response — requested date beyond the ~3-day aurora forecast window (`400`):
+Example error response - requested date beyond the ~3-day aurora forecast window (`400`):
 
 ```json
 {
@@ -266,4 +266,4 @@ tsconfig.json
 - CORS_ORIGIN in env is split on commas and used for CORS configuration.
 - The app uses pino for structured logging and pino-http for request logging.
 - All route handlers use a consistent response shape via formatResponseSuccess/formatResponseError.
-- Aurora and weather API responses are cached (node-cache) to reduce upstream calls — swappable for Redis in production without changing calling code.
+- Aurora and weather API responses are cached (node-cache) to reduce upstream calls - swappable for Redis in production without changing calling code.
