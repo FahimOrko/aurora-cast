@@ -29,14 +29,17 @@ A small Express-based TypeScript service that exposes endpoints to fetch aurora/
 
 The service produces a single combined score per hour - factoring geomagnetic activity (kp index, adjusted for the requested location's latitude) and cloud cover - instead of exposing raw kp and weather values separately, so any consumer (voice agent, app, dashboard) can give a straightforward "chance of seeing the aurora" answer without doing that math itself.
 
+This backend is the data layer behind **Aurora Cast**, a voice AI agent you can call on the phone: tell it a city and a day, and it tells you your chances of seeing the northern lights there, in plain language, and can book a reminder on Google Calendar if you want one.
+
 ## How it's used
 
-This API is currently consumed by a **Vapi AI voice agent** (the "Aurora" assistant) as its backend. The voice agent handles the full phone-call flow - greeting the caller, collecting a spoken location and date, confirming both - and calls this API through two tools:
+This API is consumed by a **Vapi AI voice agent** as its backend. The voice agent handles the full phone-call flow - greeting the caller, collecting a spoken location and date, confirming both, delivering the forecast, and optionally booking a calendar reminder - calling out to this API and to Google Calendar through a set of tools:
 
 - `find_closest_city_api` → `POST /api/v1/cities/closest` - resolves whatever place name the caller says into a known city name and coordinates.
-- `get_aurora_forecast` → `POST /api/v1/aurora/forecast` - once a location and date are confirmed, retrieves the forecast and the voice agent translates the result (best viewing window and plain-language conditions) into natural spoken language, without ever reading raw scores or JSON to the caller.
+- `get_aurora_forecast` → `POST /api/v1/aurora/forecast` - once a location and date are confirmed, retrieves the forecast; the agent translates the result (best viewing window and plain-language conditions) into natural spoken language, without ever reading raw scores or JSON to the caller.
+- `check_google_calendar_availability` / `create_google_calendar_event` - native Vapi Google Calendar tools. If the caller wants a reminder, the agent checks the connected calendar for a conflict at the forecasted viewing window and, if free, books an event with a short summary of the forecast attached.
 
-This means the API's job is strictly data and scoring - all conversational logic, prompting, and speech lives in the Vapi assistant configuration, not in this codebase.
+This means the API's job is strictly data and scoring - all conversational logic, prompting, date validation, and the calendar booking flow live in the Vapi assistant configuration, not in this codebase.
 
 _(Demo video link: TBD)_
 
