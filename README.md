@@ -43,7 +43,9 @@ This means the API's job is strictly data and scoring - all conversational logic
 
 ## Demo
 
-[▶️ Watch the Demo Video](https://lnkd.in/p/dEuuyCqx)
+<a href="https://lnkd.in/p/dEuuyCqx" target="_blank" rel="noopener noreferrer">
+  ▶️ Watch Demo Video
+</a>
 
 ## Tech stack
 
