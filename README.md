@@ -41,7 +41,9 @@ This API is consumed by a **Vapi AI voice agent** as its backend. The voice agen
 
 This means the API's job is strictly data and scoring - all conversational logic, prompting, date validation, and the calendar booking flow live in the Vapi assistant configuration, not in this codebase.
 
-_(Demo video link: TBD)_
+## Demo
+
+[▶️ Watch the Demo Video](https://lnkd.in/p/dEuuyCqx)
 
 ## Tech stack
 
